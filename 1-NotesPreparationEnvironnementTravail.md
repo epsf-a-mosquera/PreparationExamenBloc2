@@ -240,23 +240,62 @@ Une fois ce partie realise, il est possible de créer le fichier .ipynb (explora
 
 # Information sur git 
 
-Quick setup — if you’ve done this kind of thing before
-or	
-https://github.com/epsf-a-mosquera/PreparationExamenBloc2.git
-Get started by creating a new file or uploading an existing file. We recommend every repository include a README, LICENSE, and .gitignore.
-
-…or create a new repository on the command line
+📌 Information sur Git
+1️⃣ Initialiser un dépôt local
+Si tu commences un projet depuis zéro :
+# Crée un fichier README
 echo "# PreparationExamenBloc2" >> README.md
+# Initialise le dépôt Git
 git init
-git add README.md
+# Ajouter tous les fichiers du projet au suivi
 git add .
+# Faire le premier commit
 git commit -m "first commit"
+# Renommer la branche principale en 'main'
 git branch -M main
-git remote add origin https://github.com/epsf-a-mosquera/PreparationExamenBloc2.git
-git push -u origin main
-…or push an existing repository from the command line
-git remote add origin https://github.com/epsf-a-mosquera/PreparationExamenBloc2.git
-git branch -M main
-git push -u origin main
 
+2️⃣ Connecter le dépôt local à un dépôt distant
+# Ajouter l'URL du dépôt distant
+git remote add origin https://github.com/epsf-a-mosquera/PreparationExamenBloc2.git
+# Envoyer les commits locaux vers le dépôt distant (premier push)
+git push -u origin main
+Après le premier push, tu pourras utiliser simplement git push pour les futurs commits.
+
+3️⃣ Ajouter/modifier des fichiers et pousser les changements
+# Ajouter un nouveau fichier ou les modifications
+git add fichier_ou_dossier
+# Faire un commit
+git commit -m "Message décrivant les changements"
+# Envoyer les changements au dépôt distant
+git push
+
+4️⃣ Récupérer un dépôt distant sur ta machine (VM ou autre)
+Si tu veux travailler sur la VM et récupérer le projet distant :
+# Cloner le dépôt distant
+git clone https://github.com/epsf-a-mosquera/PreparationExamenBloc2.git
+# Se déplacer dans le dossier cloné
+cd PreparationExamenBloc2
+git clone crée un dossier local avec tous les fichiers et l’historique Git.
+
+5️⃣ Mettre à jour ton dépôt local avec les changements du dépôt distant
+# Récupérer les changements depuis le dépôt distant
+git fetch
+# Fusionner les changements dans la branche courante
+git merge origin/main
+Ou plus simple (commande courante) :
+git pull
+git pull = git fetch + git merge
+
+6️⃣ Vérifier l’état du dépôt
+# Voir les fichiers modifiés/non suivis
+git status
+# Voir l’historique des commits
+git log --oneline --graph --all
+
+7️⃣ Supprimer des fichiers ou dossiers du suivi
+# Retirer un fichier du suivi Git mais le garder sur le disque
+git rm --cached fichier.txt
+# Retirer un dossier entier du suivi
+git rm -r --cached dossier/
+Pratique pour .venv/ ou data/ après avoir ajouté un .gitignore.
 
