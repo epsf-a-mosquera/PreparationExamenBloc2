@@ -9,7 +9,8 @@ ipykernel # Pour exécuter des notebooks Jupyter
 
 pandas # Pour la manipulation des données
 matplotlib # Pour la visualisation des données
-
+pyarrow # Pour la gestion des fichiers Parquet
+fastparquet # Pour la gestion des fichiers Parquet
 
 Kafka # Pour le streaming de données
 kafka-python # Pour interagir avec Apache Kafka

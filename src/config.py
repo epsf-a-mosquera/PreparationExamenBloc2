@@ -55,8 +55,10 @@ ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
 RAW_JSONL_PATH = RAW_DIR / "orders_events.jsonl"
 
 # Dataset nettoyé (CSV)
-CLEAN_CSV_PATH = PROCESSED_DIR / "orders_clean.csv"
+CLEAN_CSV_PATH = PROCESSED_DIR / "orders_events_cleaned.csv"
 
+# Dataset nettoyé (parquet)
+CLEAN_PARQUET_PATH = PROCESSED_DIR / "orders_events_cleaned.parquet"
 
 # ---------------------------
 # Configuration DB MySQL

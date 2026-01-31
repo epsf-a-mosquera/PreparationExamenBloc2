@@ -510,3 +510,56 @@ Aperçu final des données :
 [5 rows x 22 columns]
 Dimensions finales du DataFrame : (4000, 22)
 """
+
+############################
+# Export du DataFrame final nettoyé (CSV et Parquet) dans PROCESSED_DIR
+#############################
+# Chemin du fichier CSV
+processed_csv_path = PROCESSED_DIR / "orders_events_cleaned.csv"
+# Export en CSV (index=False pour ne pas inclure l'index pandas)
+df_final.to_csv(processed_csv_path, index=False)
+print(f"DataFrame final exporté en CSV vers : {processed_csv_path}")
+# Chemin du fichier Parquet
+processed_parquet_path = PROCESSED_DIR / "orders_events_cleaned.parquet"
+# Export en Parquet (index=False pour ne pas inclure l'index pandas)
+df_final.to_parquet(processed_parquet_path, index=False)
+print(f"DataFrame final exporté en Parquet vers : {processed_parquet_path}")
+
+###########################
+# Imports Matplotlib + réglages d’affichage
+###########################
+
+# On importe matplotlib.pyplot : c'est le module principal pour tracer des graphiques
+import matplotlib.pyplot as plt
+
+# On importe matplotlib.dates pour mieux formater les dates sur l'axe X (utile en time series)
+import matplotlib.dates as mdates
+
+# On affiche les graphiques "dans" le notebook (si tu es sur Jupyter)
+%matplotlib inline
+
+# On définit une taille par défaut des figures (évite d'avoir des plots trop petits)
+# plt.rcParams["figure.figsize"] = (10, 5)
+
+# On définit une résolution plus propre (utile si tu exportes des images)
+# plt.rcParams["figure.dpi"] = 120
+
+# On liste les colonnes numériques (int/float) automatiquement
+num_cols = df_final.select_dtypes(include=["number"]).columns
+
+# On affiche les stats descriptives des colonnes numériques
+# describe() calcule count, mean, std, min, quartiles, max
+print(df_final[num_cols].describe().T)
+
+# On liste les colonnes catégorielles (type category)
+cat_cols = df_final.select_dtypes(include=["category"]).columns
+
+# On affiche les colonnes catégorielles détectées
+print("Colonnes catégorielles :", list(cat_cols))
+
+# On calcule le taux global de retour (bool -> mean : True=1, False=0)
+# mean() sur bool donne directement une proportion
+return_rate = df_final["order_is_returned"].mean()
+
+# On affiche le taux global de retour en %
+print(f"Taux global de retour : {return_rate*100:.2f}%")
