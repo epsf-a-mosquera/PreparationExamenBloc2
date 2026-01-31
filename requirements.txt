@@ -1,0 +1,21 @@
+#ExamenBloc2/requirements.txt
+sqlalchemy # Pour l'ORM
+sqlalchemy-utils # Pour les types de données supplémentaires dans SQLAlchemy
+psycopg[binary] # Pour PostgreSQL à voir si nécessaire car la base de données est MySQL
+pymysql # Pour MySQL avec SQLAlchemy
+
+jupyter # Pour les notebooks interactifs
+ipykernel # Pour exécuter des notebooks Jupyter
+
+pandas # Pour la manipulation des données
+matplotlib # Pour la visualisation des données
+
+
+Kafka # Pour le streaming de données
+kafka-python # Pour interagir avec Apache Kafka
+
+dotenv # Pour charger les variables d'environnement depuis un fichier .env
+pathlib # Pour la gestion des chemins de fichiers
+
+scikit-learn # Pour les algorithmes de machine learning
+joblib # Pour la sérialisation des modèles

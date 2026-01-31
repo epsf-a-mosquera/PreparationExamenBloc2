@@ -1,0 +1,93 @@
+#ExamenBloc2/docker-compose.yml
+version: '3.8'  # Version du format Docker Compose
+services:
+  # -------------------------------
+  # Service MySQL
+  # Base de données relationnelle
+  # -------------------------------
+  mysql:
+    image: mysql:8.0                        # Image Docker officielle de MySQL version 8.0
+    container_name: exam-mysql             # Nom du conteneur pour identification
+    environment:                            # Variables d'environnement pour configurer MySQL
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}   # Mot de passe root (depuis fichier .env)
+      MYSQL_DATABASE: ${MYSQL_DATABASE}             # Base de données à créer au démarrage
+      MYSQL_USER: ${MYSQL_USER}                     # Utilisateur MySQL
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}             # Mot de passe de l'utilisateur MySQL
+    ports:
+      - "${MYSQL_PORT}:3306"                  # Mappe le port MySQL interne (3306) vers l'extérieur (défini dans .env)
+    volumes:
+      - mysql_data:/var/lib/mysql             # Persistance des données sur un volume Docker
+    healthcheck:                              # Vérifie que le service MySQL est opérationnel
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]  # Commande ping MySQL
+      interval: 5s                            # Intervalle entre les tests
+      timeout: 5s                             # Durée maximale d'attente pour une réponse
+      retries: 20                             # Nombre de tentatives avant de considérer le service non sain
+
+  # -------------------------------
+  # Service phpMyAdmin
+  # Interface web pour gérer MySQL
+  # -------------------------------
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin             # Image officielle phpMyAdmin
+    container_name: exam-phpmyadmin          # Nom du conteneur
+    environment:
+      PMA_HOST: mysql                        # Hôte de la base de données à gérer (le service mysql défini ci-dessus)
+      PMA_PORT: 3306                          # Port MySQL
+      PMA_USER: root                          # Utilisateur par défaut pour connexion
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}    # Mot de passe root pour la connexion
+    ports:
+      - "${PHPMYADMIN_PORT}:80"               # Mappe le port web 80 du conteneur vers un port de l'hôte
+    depends_on:                               # Dépendances : phpMyAdmin démarre après MySQL sain
+      mysql:
+        condition: service_healthy
+
+  # -------------------------------
+  # Service Zookeeper
+  # Gestionnaire de configuration et coordination pour Kafka
+  # -------------------------------
+  zookeeper:
+    image: bitnami/zookeeper:3.9              # Image Zookeeper Bitnami version 3.9
+    container_name: exam-zookeeper            # Nom du conteneur
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes            # Permet une connexion sans authentification
+    ports:
+      - "2181:2181"                           # Mappe le port interne 2181 vers l'extérieur
+
+  # -------------------------------
+  # Service Kafka
+  # Système de messagerie distribuée
+  # -------------------------------
+  kafka:
+    image: bitnami/kafka:3.7                 # Image Kafka Bitnami version 3.7
+    container_name: exam-kafka               # Nom du conteneur
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181   # Adresse de Zookeeper pour coordination
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092       # Adresse et port sur lequel Kafka écoute
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092  # Adresse que les clients utiliseront pour se connecter
+      - ALLOW_PLAINTEXT_LISTENER=yes                  # Autorise une connexion non sécurisée
+    ports:
+      - "9092:9092"                            # Mappe le port Kafka interne 9092 vers l'extérieur
+    depends_on:                                # Kafka dépend de Zookeeper
+      - zookeeper
+
+  # -------------------------------
+  # Service Kafka UI
+  # Interface Web pour administrer Kafka
+  # -------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest     # Image officielle Kafka UI
+    container_name: exam-kafka-ui            # Nom du conteneur
+    ports:
+      - "${KAFKA_UI_PORT}:8080"                          # Port externe 8081 → port interne 8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_UI_CLUSTER_NAME}     # Nom du cluster Kafka affiché dans l'interface
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092   # Adresse du broker Kafka (nom du service Docker + port)
+      AUTH_TYPE: "disabled"     # Désactiver l’authentification
+    depends_on:
+      - kafka                                # Kafka UI démarre après Kafka
+
+# -------------------------------
+# Volumes Docker pour persistance des données
+# -------------------------------
+volumes:
+  mysql_data:                                   # Volume pour stocker les données MySQL
