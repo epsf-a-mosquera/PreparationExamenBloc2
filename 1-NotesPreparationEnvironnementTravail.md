@@ -189,6 +189,35 @@ docker compose logs -f <nom_service>
 # -------------------------------------------------------------
 docker inspect <nom_du_conteneur>
 # Affiche toutes les informations du conteneur (réseau, volumes, configuration)
+# -------------------------------------------------------------
+# 11 supprimer tous les conteneurs, images et volumes
+# -------------------------------------------------------------
+docker system prune -a --volumes
+# Attention : supprime toutes les données persistantes et images non utilisées
+# -------------------------------------------------------------
+# verification que les ports sont bien exposés
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+# si il n'est pas possible d'acceder aux services despuis le navigateur, utiliser un tunnel SSH avc la commande suivante
+ssh -L 8080:localhost:8080 -L 8081:localhost:8081 ubuntu@<IP_VM>
+# Remplacer <IP_VM> par l'adresse IP de la VM
+# donc si par exemple ubuntu@ip-172-31-40-176 --> pour touver l'ip publique de la vm 
+curl ifconfig.me
+# exemple de resultat 52.31.198.246
+
+ssh -i ~/ExamenBloc2/keys/data_enginering_machine.pem \
+  -L 8080:localhost:8080 \
+  -L 8081:localhost:8081 \
+  ubuntu@52.31.198.246
+
+ssh -i examen-bloc2.pem \
+  -L 8080:localhost:8080 \
+  -L 8081:localhost:8081 \
+  ubuntu@IP_PUBLIQUE
+
+# pour éviter le problème de permission denied for key
+chmod 600 ~/ExamenBloc2/keys/data_enginering_machine.pem
+
 ```
 # Pour accéder aux interfaces depuis le navigateur
 phpMyAdmin (interface web pour MySQL) → http://localhost:8080
