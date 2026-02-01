@@ -233,6 +233,21 @@ ssh -i examen-bloc2.pem \
 chmod 600 ~/ExamenBloc2/keys/data_enginering_machine.pem
 
 ```
+
+# installer dnas la VM un navigateur web léger pour pouvoir accéder aux interfaces web des services docker
+```bash
+sudo apt update
+sudo apt install -y firefox
+```
+# pour lancer firefox depuis la VM
+```bash
+firefox &
+```
+# pour verifier les ports exposés par les conteneurs docker
+```bash
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+```
+
 # Pour accéder aux interfaces depuis le navigateur
 phpMyAdmin (interface web pour MySQL) → http://localhost:8080
 Kafka UI (interface web pour Kafka) → http://localhost:8081

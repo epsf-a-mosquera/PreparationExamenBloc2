@@ -15,7 +15,3 @@ __pycache__
 
 # Données lourdes
 # data/
-
-# Secrets / keys
-*.pem
-keys/data_enginering_machine.pem
