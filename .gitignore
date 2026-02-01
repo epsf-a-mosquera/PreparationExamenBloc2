@@ -3,6 +3,10 @@ __pycache__
 *.pyc
 *.pyo
 
+# Clés privées
+*.pem
+*.key
+
 # Virtual environment
 .venv
 
