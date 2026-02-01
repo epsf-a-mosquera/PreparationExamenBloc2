@@ -3,7 +3,7 @@
 Celui-ci est le script d'extraction et de transformation des données JSON.
 Il lit les fichiers JSON, extrait les informations pertinentes, les transforme en un format structuré (DataFrame pandas), après nous rélisons des opérations de nettoyage et de transformation des données (les operation du notebook d'exploration).
 Il sauvegarde ensuite les données transformées dans un fichier CSV et un fichier parquet pour une utilisation ultérieure.
-à la fin, il génère des features prêtes pour l'entraînement du modèle ML.
+à la fin, il génère des features pour le modèle ML.
 '''
 import os # Pour les opérations liées au système de fichiers
 import pathlib # Pour la manipulation des chemins de fichiers 
@@ -209,6 +209,9 @@ def extract_transform():
     print(df.dtypes)
     print(f"aperçu des données :")
     print(df[categorical_cols].head(10))
+    with open("describe.txt", "w", encoding="utf-8") as f:
+        f.write(df.describe(include="all").to_string())
+
 
 if __name__ == "__main__":
     extract_transform()

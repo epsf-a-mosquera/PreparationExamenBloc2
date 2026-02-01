@@ -47,8 +47,25 @@ RAW_JSONL_PATH = RAW_DIR / "orders_events.jsonl"
 CLEAN_CSV_PATH = PROCESSED_DIR / "orders_events_cleaned.csv"
 # Dataset nettoyé (parquet)
 CLEAN_PARQUET_PATH = PROCESSED_DIR / "orders_events_cleaned.parquet"
-# Dataset des features prêtes pour le ML (CSV)
-FEATURES_CSV_PATH = FEATURES_DIR / "orders_events_features.csv"
+# Dataset des features prêtes pour le ML de classification (CSV) avec normalisation robuste des variables numériques
+CLASSIFICATION_FEATURES_TRAIN_CSV_PATH = FEATURES_DIR / "classification_orders_events_features_train.csv"
+CLASSIFICATION_FEATURES_TEST_CSV_PATH = FEATURES_DIR / "classification_orders_events_features_test.csv"
+# Dataset des features prêtes pour le ML de regression (CSV) avec standardisation robuste des variables numériques
+REGRESSION_FEATURES_TRAIN_CSV_PATH = FEATURES_DIR / "regression_orders_events_features_train.csv"
+REGRESSION_FEATURES_TEST_CSV_PATH = FEATURES_DIR / "regression_orders_events_features_test.csv"
+
+
+#---------------------------
+# Model ML et métriques
+#---------------------------
+# Dossier des artefacts (modèles, métriques, etc.)
+ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
+# Chemin du modèle sauvegardé avec joblib
+CLASSIFICATION_MODEL_PATH = ARTIFACTS_DIR / "classification_model.joblib"
+REGRESSION_MODEL_PATH = ARTIFACTS_DIR / "regression_model.joblib"
+# Chemin pour sauvegarder des infos (métriques et métadonnées) au format JSON
+CLASSIFICATION_MODEL_META_PATH = ARTIFACTS_DIR / "classification_model_meta.json"
+REGRESSION_MODEL_META_PATH = ARTIFACTS_DIR / "regression_model_meta.json"
 
 # ---------------------------
 # Configuration DB MySQL
@@ -81,10 +98,3 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "events")
 
 
-# ---------------------------
-# Modèle ML
-# ---------------------------
-# Chemin du modèle sauvegardé avec joblib
-MODEL_PATH = ARTIFACTS_DIR / "return_model.joblib"
-# Chemin pour sauvegarder des infos (métriques / features)
-MODEL_META_PATH = ARTIFACTS_DIR / "return_model_meta.json"

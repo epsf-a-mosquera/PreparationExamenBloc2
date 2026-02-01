@@ -110,12 +110,15 @@ pip install -r requirements.txt
 pip list
 # 6️⃣ Désactiver l'environnement virtuel si nécessaire
 deactivate
-
+# 7️⃣ Pour creer un nouveau fichier requirements.txt après avoir installé des paquets
+pip freeze > requirements.txt
+```
+```python
 #Pour lancer des scripts : Exemple
 python3 src/generate_data.py
 
 #si le script est dans un dossier avec un fichier __init__.py, par exemple src avec ce fichier de dans, il est possible de faire
-python3 -m src.generate_data
+python3 -m src.generate_data (à faire si on a des imports from src.config import ... dans generate_data.py)
 ```
 
 # 4. Préparer le fichier .env qui va contenir les variables d'environnement qui vont être utilisés par les scripts et par les fichier Docker .env
