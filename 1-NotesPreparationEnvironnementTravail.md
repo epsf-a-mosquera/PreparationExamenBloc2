@@ -205,7 +205,7 @@ ssh -L 8080:localhost:8080 -L 8081:localhost:8081 ubuntu@<IP_VM>
 curl ifconfig.me
 # exemple de resultat 52.31.198.246
 
-ssh -i ~/ExamenBloc2/keys/data_enginering_machine.pem \
+ssh -i ~/keys/data_enginering_machine.pem \
   -L 8080:localhost:8080 \
   -L 8081:localhost:8081 \
   ubuntu@52.31.198.246
