@@ -18,3 +18,4 @@ __pycache__
 
 # Secrets / keys
 *.pem
+keys/data_enginering_machine.pem

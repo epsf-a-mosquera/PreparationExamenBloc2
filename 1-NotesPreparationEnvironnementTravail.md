@@ -307,6 +307,9 @@ git remote add origin https://github.com/epsf-a-mosquera/PreparationExamenBloc2.
 # Envoyer les commits locaux vers le dépôt distant (premier push)
 git push -u origin main
 Après le premier push, tu pourras utiliser simplement git push pour les futurs commits.
+#forcer le push (si nécessaire)
+git push origin nom_de_la_branche --force
+git push origin main --force
 
 3️⃣ Ajouter/modifier des fichiers et pousser les changements
 # Ajouter un nouveau fichier ou les modifications
