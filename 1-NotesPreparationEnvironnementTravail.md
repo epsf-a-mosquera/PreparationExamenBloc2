@@ -35,7 +35,8 @@ ExamenBloc2/
     db_models.py
     ingest.py
     train.py
-    kafka_pipeline.py
+    kafka_producer.py
+    kafka_consumer.py
     utils.py
   tests/
     test_ingestion.py
@@ -203,12 +204,25 @@ ssh -L 8080:localhost:8080 -L 8081:localhost:8081 ubuntu@<IP_VM>
 # Remplacer <IP_VM> par l'adresse IP de la VM
 # donc si par exemple ubuntu@ip-172-31-40-176 --> pour touver l'ip publique de la vm 
 curl ifconfig.me
-# exemple de resultat 52.31.198.246
+# exemple de resultat 34.251.2.21
+
+#depuis la machine virtuelle 
+ssh -i ~/keys/data_enginering_machine.pem \
+  -L 8080:localhost:8080 \
+  -L 8081:localhost:8081 \
+  ubuntu@34.251.2.21
+
+#à lancer de power shelle del computador
+ssh -i "C:\Users\a.mosquera\Dropbox\FormationDataEngineer\data_enginering_machine.pem" `
+  -L 18080:127.0.0.1:8080 `
+  -L 18081:127.0.0.1:8081 `
+  ubuntu@34.251.2.21
+
 
 ssh -i ~/keys/data_enginering_machine.pem \
   -L 8080:localhost:8080 \
   -L 8081:localhost:8081 \
-  ubuntu@52.31.198.246
+  ubuntu@34.251.2.21
 
 ssh -i examen-bloc2.pem \
   -L 8080:localhost:8080 \
