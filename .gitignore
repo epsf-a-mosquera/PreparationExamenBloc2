@@ -15,3 +15,7 @@ __pycache__
 
 # Données lourdes
 # data/
+# Secrets / keys
+keys/*.pem
+*.pem
+.env
