@@ -11,7 +11,7 @@ import json # Pour lire les fichiers JSON
 import math # Pour les opérations mathématiques si nécessaire
 import pandas as pd # Pour la manipulation des données
 import numpy as np # Pour les opérations numériques
-from src.config import RAW_JSONL_PATH, CLEAN_CSV_PATH, CLEAN_PARQUET_PATH, FEATURES_CSV_PATH # Importer les configurations depuis le fichier config.py
+from src.config import RAW_JSONL_PATH, CLEAN_CSV_PATH, CLEAN_PARQUET_PATH # Importer les configurations depuis le fichier config.py
 
 # Fonction generique pour aplatir les colonnes imbriquées dans un DataFrame pandas
 def flatten_nested_columns(df):
@@ -208,11 +208,7 @@ def extract_transform():
     print("Types de données finaux :")
     print(df.dtypes)
     print(f"aperçu des données :")
-    print(df.head(10))
-
-
-    #generation des features pour entrainement du modèle ML
-    
+    print(df[categorical_cols].head(10))
 
 if __name__ == "__main__":
     extract_transform()

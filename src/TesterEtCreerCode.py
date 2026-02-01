@@ -563,4 +563,3 @@ return_rate = df_final["order_is_returned"].mean()
 
 # On affiche le taux global de retour en %
 print(f"Taux global de retour : {return_rate*100:.2f}%")
-
