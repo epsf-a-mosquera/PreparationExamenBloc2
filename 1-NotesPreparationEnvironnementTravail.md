@@ -27,7 +27,7 @@ ExamenBloc2/
   docker-compose.yml
   .env
   notebooks/
-    01_exploration.ipynb
+    exploration.ipynb
   src/
     __init__.py
     config.py
@@ -236,6 +236,7 @@ print(sys.executable)
 
 ```
 Une fois ce partie realise, il est possible de créer le fichier .ipynb (exploration.ipynb) et selectionner le kernel qu'on vient de créer. 
+on commence l'analyse des données JSON et la prise de décisions pour la suite.
 
 
 # Information sur git 

@@ -12,13 +12,10 @@ Pourquoi c'est important :
 
 # On importe "os" pour lire les variables d'environnement.
 import os
-
 # On importe "Path" pour manipuler les chemins de fichiers proprement (cross-platform).
 from pathlib import Path
-
 # On importe load_dotenv pour charger le fichier .env automatiquement.
 from dotenv import load_dotenv
-
 # Charge les variables d'environnement depuis ".env" si présent.
 # Cela permet d'utiliser os.getenv(...) ensuite.
 load_dotenv()
@@ -27,22 +24,16 @@ load_dotenv()
 # ---------------------------
 # Chemins du projet
 # ---------------------------
-
 # BASE_DIR = dossier racine du projet (ExamenBloc2/).
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-
 # Dossier data/
 DATA_DIR = PROJECT_DIR / "data"
-
 # Dossier où on met le JSON brut
 RAW_DIR = DATA_DIR / "raw"
-
 # Dossier où on met les données nettoyées
 PROCESSED_DIR = DATA_DIR / "processed"
-
 # Dossier où on sauvegarde les features prêtes pour le ML
 FEATURES_DIR = DATA_DIR / "features"
-
 # Dossier où on sauvegarde les élemtents générés par le model ml exemple : modèles, métriques, etc.
 ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
 
@@ -50,20 +41,18 @@ ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
 # ---------------------------
 # Fichiers de données
 # ---------------------------
-
 # Dataset brut (JSON Lines : 1 JSON par ligne)
 RAW_JSONL_PATH = RAW_DIR / "orders_events.jsonl"
-
 # Dataset nettoyé (CSV)
 CLEAN_CSV_PATH = PROCESSED_DIR / "orders_events_cleaned.csv"
-
 # Dataset nettoyé (parquet)
 CLEAN_PARQUET_PATH = PROCESSED_DIR / "orders_events_cleaned.parquet"
+# Dataset des features prêtes pour le ML (CSV)
+FEATURES_CSV_PATH = FEATURES_DIR / "orders_events_features.csv"
 
 # ---------------------------
 # Configuration DB MySQL
 # ---------------------------
-
 # On lit les variables depuis l'environnement.
 MYSQL_USER = os.getenv("MYSQL_USER", "exam")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "exampwd")
@@ -74,21 +63,20 @@ MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "examdb")
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 
+# ---------------------------
 # URL SQLAlchemy pour MySQL.
+# ---------------------------
 # On utilise "pymysql" comme driver Python.
 SQLALCHEMY_DATABASE_URL = (
     f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
 )
 
-
 # ---------------------------
 # Kafka
 # ---------------------------
-
 # Dans docker-compose : kafka est accessible depuis les containers sous "kafka:9092".
 # Depuis la machine host, on peut accéder via "localhost:9092" (port exposé).
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
-
 # Topic Kafka pour les événements
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "events")
 
@@ -96,9 +84,7 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "events")
 # ---------------------------
 # Modèle ML
 # ---------------------------
-
 # Chemin du modèle sauvegardé avec joblib
 MODEL_PATH = ARTIFACTS_DIR / "return_model.joblib"
-
 # Chemin pour sauvegarder des infos (métriques / features)
 MODEL_META_PATH = ARTIFACTS_DIR / "return_model_meta.json"

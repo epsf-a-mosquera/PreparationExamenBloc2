@@ -1,5 +1,5 @@
 #ExamenBloc2/docker-compose.yml
-version: '3.8'  # Version du format Docker Compose
+# Docker Compose file to set up MySQL, phpMyAdmin, Zookeeper, Kafka, and Kafka UI services
 services:
   # -------------------------------
   # Service MySQL
@@ -7,7 +7,7 @@ services:
   # -------------------------------
   mysql:
     image: mysql:8.0                        # Image Docker officielle de MySQL version 8.0
-    container_name: exam-mysql             # Nom du conteneur pour identification
+    container_name: exam-mysql              # Nom du conteneur pour identification
     environment:                            # Variables d'environnement pour configurer MySQL
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}   # Mot de passe root (depuis fichier .env)
       MYSQL_DATABASE: ${MYSQL_DATABASE}             # Base de données à créer au démarrage
@@ -46,7 +46,7 @@ services:
   # Gestionnaire de configuration et coordination pour Kafka
   # -------------------------------
   zookeeper:
-    image: bitnami/zookeeper:3.9              # Image Zookeeper Bitnami version 3.9
+    image: wurstmeister/zookeeper              # Image Zookeeper wurstmeister
     container_name: exam-zookeeper            # Nom du conteneur
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes            # Permet une connexion sans authentification
@@ -58,7 +58,7 @@ services:
   # Système de messagerie distribuée
   # -------------------------------
   kafka:
-    image: bitnami/kafka:3.7                 # Image Kafka Bitnami version 3.7
+    image: wurstmeister/kafka                 # Image Kafka wurstmeister
     container_name: exam-kafka               # Nom du conteneur
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181   # Adresse de Zookeeper pour coordination

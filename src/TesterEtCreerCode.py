@@ -536,7 +536,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 # On affiche les graphiques "dans" le notebook (si tu es sur Jupyter)
-%matplotlib inline
+# %matplotlib inline
 
 # On définit une taille par défaut des figures (évite d'avoir des plots trop petits)
 # plt.rcParams["figure.figsize"] = (10, 5)
@@ -563,3 +563,4 @@ return_rate = df_final["order_is_returned"].mean()
 
 # On affiche le taux global de retour en %
 print(f"Taux global de retour : {return_rate*100:.2f}%")
+
