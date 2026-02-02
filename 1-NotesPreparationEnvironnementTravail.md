@@ -107,6 +107,8 @@ source .venv/bin/activate
 # 4️⃣ Installer toutes les dépendances listées dans requirements.txt
 pip install --upgrade pip  # Mettre pip à jour avant installation
 pip install -r requirements.txt
+#pour désinstaller les paquets si nécessaire une exemple
+pip uninstall -y Kafka kafka kafka-python dotenv
 # 5️⃣ Vérifier que les paquets sont bien installés
 pip list
 # 6️⃣ Désactiver l'environnement virtuel si nécessaire

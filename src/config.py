@@ -47,6 +47,8 @@ RAW_JSONL_PATH = RAW_DIR / "orders_events.jsonl"
 CLEAN_CSV_PATH = PROCESSED_DIR / "orders_events_cleaned.csv"
 # Dataset nettoyé (parquet)
 CLEAN_PARQUET_PATH = PROCESSED_DIR / "orders_events_cleaned.parquet"
+# Dataset nettoyé (json)
+CLEAN_JSONL_PATH = PROCESSED_DIR / "orders_events_cleaned.json"
 # Dataset des features prêtes pour le ML de classification (CSV) avec normalisation robuste des variables numériques
 CLASSIFICATION_FEATURES_TRAIN_CSV_PATH = FEATURES_DIR / "classification_orders_events_features_train.csv"
 CLASSIFICATION_FEATURES_TEST_CSV_PATH = FEATURES_DIR / "classification_orders_events_features_test.csv"

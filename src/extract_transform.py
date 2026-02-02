@@ -11,7 +11,7 @@ import json # Pour lire les fichiers JSON
 import math # Pour les opérations mathématiques si nécessaire
 import pandas as pd # Pour la manipulation des données
 import numpy as np # Pour les opérations numériques
-from src.config import RAW_JSONL_PATH, CLEAN_CSV_PATH, CLEAN_PARQUET_PATH # Importer les configurations depuis le fichier config.py
+from src.config import RAW_JSONL_PATH, CLEAN_CSV_PATH, CLEAN_PARQUET_PATH, CLEAN_JSONL_PATH # Importer les configurations depuis le fichier config.py
 
 # Fonction generique pour aplatir les colonnes imbriquées dans un DataFrame pandas
 def flatten_nested_columns(df):
@@ -36,6 +36,105 @@ def flatten_nested_columns(df):
 
     # Retourner le DataFrame final aplati
     return df
+
+def upsert_clean_dataset(
+    df_new: pd.DataFrame,
+    csv_path: str,
+    parquet_path: str,
+    jsonl_path: str,
+    unique_id_col: str = "event_id",
+    updated_at_col: str = "event_time",
+) -> pd.DataFrame:
+    """
+    Réalise un UPSERT "fichier" (CSV/Parquet) :
+      - ajoute les nouvelles lignes si l'identifiant unique n'existe pas
+      - met à jour les lignes existantes si l'identifiant existe déjà
+        (en gardant la version la plus récente selon updated_at_col)
+
+    Pourquoi on réécrit le fichier ?
+      - Parce qu'un CSV/Parquet ne permet pas de "modifier en place" une ligne existante.
+      - Donc on lit l'existant, on fusionne, on dédoublonne, puis on réécrit.
+    """
+
+    # ----------------------------
+    # 1) Charger l'existant si présent
+    # ----------------------------
+    # On privilégie le Parquet si disponible (souvent mieux typé que le CSV).
+    df_existing = None
+
+    if os.path.exists(parquet_path):
+        # Lire le dataset existant en Parquet
+        df_existing = pd.read_parquet(parquet_path)
+    elif os.path.exists(csv_path):
+        # Sinon, fallback sur le CSV
+        df_existing = pd.read_csv(csv_path)
+
+    # Si aucun fichier clean n'existe, l'UPSERT revient simplement à "écrire df_new"
+    if df_existing is None:
+        df_merged = df_new.copy()
+    else:
+        # ----------------------------
+        # 2) Aligner les colonnes (robuste aux ajouts de colonnes dans le temps)
+        # ----------------------------
+        # On crée l'union des colonnes entre df_existing et df_new
+        all_cols = sorted(set(df_existing.columns).union(set(df_new.columns)))
+
+        # On réindexe les deux DataFrames sur les mêmes colonnes
+        # (les colonnes absentes seront remplies par NaN)
+        df_existing = df_existing.reindex(columns=all_cols)
+        df_new = df_new.reindex(columns=all_cols)
+
+        # ----------------------------
+        # 3) Fusionner : existant + nouveau
+        # ----------------------------
+        df_merged = pd.concat([df_existing, df_new], ignore_index=True)
+
+    # ----------------------------
+    # 4) Sécurités : clés / dates
+    # ----------------------------
+    # Si la colonne identifiant n'existe pas, on ne peut pas upsert => erreur explicite
+    if unique_id_col not in df_merged.columns:
+        raise KeyError(
+            f"Colonne identifiant unique '{unique_id_col}' introuvable. "
+            f"Colonnes disponibles: {list(df_merged.columns)}"
+        )
+
+    # Si la colonne de "date de mise à jour" existe, on s'en sert pour garder le plus récent
+    # (sinon, on garde arbitrairement la dernière occurrence)
+    if updated_at_col in df_merged.columns:
+        # Convertir en datetime si ce n'est pas déjà le cas (robuste aux lectures CSV)
+        df_merged[updated_at_col] = pd.to_datetime(
+            df_merged[updated_at_col],
+            errors="coerce",
+            utc=True
+        )
+
+        # Trier du plus récent au plus ancien
+        df_merged = df_merged.sort_values(by=updated_at_col, ascending=False)
+
+        # Dédoublonner sur l'identifiant unique :
+        # keep="first" => garde la ligne la plus récente (car tri descendant)
+        df_merged = df_merged.drop_duplicates(subset=[unique_id_col], keep="first")
+    else:
+        # Pas de colonne temps => on garde la dernière occurrence rencontrée
+        df_merged = df_merged.drop_duplicates(subset=[unique_id_col], keep="last")
+
+    # Optionnel mais propre : remettre un index propre
+    df_merged = df_merged.reset_index(drop=True)
+
+    # ----------------------------
+    # 5) Écrire le dataset final
+    # ----------------------------
+    # CSV : facile à relire, mais types parfois moins fiables
+    df_merged.to_csv(csv_path, index=False)
+
+    # Parquet : mieux pour les types/perf
+    df_merged.to_parquet(parquet_path, index=False)
+    
+    # json : mieux pour les types/perf
+    df_merged.to_json(jsonl_path, orient="records", lines=True) # lines=True json lines format
+
+    return df_merged
 
 
 # Fonction principale d'extraction et de transformation
@@ -197,13 +296,25 @@ def extract_transform():
         axis=1  # axis=1 signifie qu'on applique la fonction sur les lignes
     )
     
-    # export du DataFrame nettoyé en CSV
-    df.to_csv(CLEAN_CSV_PATH, index=False)
-    print(f"DataFrame nettoyé sauvegardé dans {CLEAN_CSV_PATH}")
+    # ======================================================
+    # UPSERT fichier (au lieu d'écraser)
+    # - si event_id n'existe pas => ajout
+    # - si event_id existe déjà   => mise à jour (plus récent event_time)
+    # ======================================================
+    df = upsert_clean_dataset(
+        df_new=df,
+        csv_path=CLEAN_CSV_PATH,
+        parquet_path=CLEAN_PARQUET_PATH,
+        jsonl_path=CLEAN_JSONL_PATH,
+        unique_id_col="event_id",     # <-- identifiant unique métier
+        updated_at_col="event_time",  # <-- critère pour choisir la version la plus récente
+    )
+
+    print(f"DataFrame clean UPSERT sauvegardé dans {CLEAN_CSV_PATH} et {CLEAN_PARQUET_PATH} et {CLEAN_JSONL_PATH}")
+
     
-    # export du DataFrame nettoyé en Parquet
-    df.to_parquet(CLEAN_PARQUET_PATH, index=False)
-    print(f"DataFrame nettoyé sauvegardé dans {CLEAN_PARQUET_PATH}")
+    # Génération de statistiques descriptives pour vérification
+    print("Aperçu du DataFrame nettoyé :")
     print(df.info())
     print("Types de données finaux :")
     print(df.dtypes)

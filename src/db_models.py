@@ -50,6 +50,7 @@ class Event(Base):
     # "back_populates" permet de synchroniser les deux côtés de la relation
     customer = relationship("Customer", back_populates="events")  # Relation avec le client de l'événement
     order = relationship("Order", back_populates="events")  # Relation avec la commande de l'événement
+    prediction = relationship("Prediction", back_populates="event", uselist=False)  # Relation avec la prédiction associée à l'événement (1-1)
     
     
 class Order(Base):
@@ -74,7 +75,8 @@ class Order(Base):
     # "back_populates" permet de synchroniser les deux côtés de la relation
     customer = relationship("Customer", back_populates="orders")  # Relation avec le client de la commande
     events = relationship("Event", back_populates="order")  # Relation avec les événements de la commande
-    
+    predictions = relationship("Prediction", back_populates="order")  # Relation avec les prédictions de la commande
+
 
 class Customer(Base):
     """
@@ -89,7 +91,26 @@ class Customer(Base):
     # "back_populates" permet de synchroniser les deux côtés de la relation
     orders = relationship("Order", back_populates="customer")  # Relation avec les commandes du client
     events = relationship("Event", back_populates="customer")  # Relation avec les événements du client
+    predictions = relationship("Prediction", back_populates="customer")  # Relation avec les prédictions du client
  
+class Prediction(Base):
+    """
+    Modèle SQLAlchemy pour représenter une prédiction dans la base de données MySQL.
+    """
+    __tablename__ = "table_predictions"  # Nom de la table dans la base de données
+
+    event_id = Column(String(36), ForeignKey("table_events.event_id"), primary_key=True)  # ID unique de l'événement (UUID)
+    order_id = Column(String(36), ForeignKey("table_orders.order_id"), nullable=False)  # ID de la commande associée à la prédiction
+    customer_customer_id = Column(String(36), ForeignKey("table_customers.customer_customer_id"), nullable=False)  # ID du client associé à la commande
+    return_proba = Column(Float, nullable=False)  # Probabilité que la commande soit retournée
+
+    # Relations
+    # "back_populates" permet de synchroniser les deux côtés de la relation
+    customer = relationship("Customer", back_populates="predictions")  # Relation avec le client de la commande
+    order = relationship("Order", back_populates="predictions")  # Relation avec la commande de la prédiction
+    event = relationship("Event", back_populates="prediction", uselist=False)  # Relation avec l'événement de la prédiction
+    
+
 if __name__ == "__main__":
     engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=True)
     Base.metadata.create_all(engine)
