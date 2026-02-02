@@ -12,11 +12,11 @@ Rôle :
     - src.ingest_predictions.ingest_predictions_dataframe() -> Prediction
 - Faire l'inférence ML (classification) pour calculer return_proba
 
-Pourquoi ce design :
-- On centralise toute la logique d'UPSERT dans ingest.py / ingest_predictions.py
-  => la consommation Kafka reste simple et robuste.
-- On évite les doublons via event_id (PK de Event) en vérifiant l'existence avant de ré-ingérer.
-- Logs explicites pour debug.
+IMPORTANT (suite option 2):
+- Le fichier joblib sauvegardé contient maintenant un "bundle" :
+    {"model": <sklearn_model>, "preprocess": {...}}
+- Il faut appliquer le preprocessing (imputers, encoder, scaler, alignement colonnes)
+  avant d'appeler model.predict_proba(...)
 
 Usage :
     python -m src.kafka_consumer
@@ -41,6 +41,21 @@ from src.ingest import ingest_clean_dataframe
 from src.ingest_predictions import ingest_predictions_dataframe
 
 
+# -------------------------------------------------------------------
+# Compat joblib/pickle
+# -------------------------------------------------------------------
+# Certains artefacts joblib peuvent référencer "src.kafka_consumer.IQR".
+# Pour éviter l'erreur au chargement, on ré-expose IQR dans ce module
+# en l'important depuis train_classification (qui ne s'exécute pas à l'import
+# car tout est dans main() + if __name__ == "__main__":).
+try:
+    from src.train_classification import IQR  # noqa: F401
+except Exception:
+    # Si cet import échoue, joblib.load() échouera aussi pour les anciens modèles.
+    IQR = None  # type: ignore
+
+
+
 # ============================================================
 # 0) Initialisation DB
 # ============================================================
@@ -57,7 +72,6 @@ def event_already_ingested(engine, event_id: str) -> bool:
     Vérifie si un event_id existe déjà dans la table Event.
     Comme event_id est PK, si l'event est présent, on considère qu'il a déjà été ingéré.
     """
-    # On ouvre une connexion courte (transaction implicite read-only)
     with engine.connect() as conn:
         res = conn.execute(select(Event.event_id).where(Event.event_id == event_id)).first()
         return res is not None
@@ -76,7 +90,6 @@ def to_utc_datetime(value, fallback_ms: int | None = None) -> datetime:
     """
     if value is not None:
         try:
-            # pandas gère bien beaucoup de formats
             dt = pd.to_datetime(value, utc=True, errors="coerce")
             if not pd.isna(dt):
                 return dt.to_pydatetime()
@@ -92,21 +105,14 @@ def to_utc_datetime(value, fallback_ms: int | None = None) -> datetime:
 def build_clean_row(event_json: dict, kafka_timestamp_ms: int | None) -> dict:
     """
     Construit une ligne "clean" (dict) conforme aux colonnes attendues par ingest.py.
-
-    On met des valeurs par défaut quand certaines clés sont absentes, car en DB
-    plusieurs colonnes sont nullable=False.
     """
-    # Identifiants indispensables
     event_id = str(event_json["event_id"])
     order_id = str(event_json["order_id"])
     customer_id = str(event_json["customer_customer_id"])
 
-    # event_time : on essaye event_json["event_time"], sinon timestamp kafka
     event_time = to_utc_datetime(event_json.get("event_time"), fallback_ms=kafka_timestamp_ms)
 
-    # Valeurs business (avec defaults raisonnables)
     customer_country = event_json.get("customer_country", "unknown")
-
     order_device = event_json.get("order_device", "unknown")
     order_channel = event_json.get("order_channel", "unknown")
     order_main_category = event_json.get("order_main_category", "unknown")
@@ -117,11 +123,10 @@ def build_clean_row(event_json: dict, kafka_timestamp_ms: int | None) -> dict:
     order_discount = float(event_json.get("order_discount", 0.0))
     order_order_total = float(event_json.get("order_order_total", 0.0))
 
-    # Label : si absent dans le flux, on met False par défaut
-    # (sinon l'INSERT échouera car nullable=False dans ta table Order)
+    # Label (si absent dans le flux, on met False par défaut)
     order_is_returned = bool(event_json.get("order_is_returned", False))
 
-    # Features dérivées
+    # Feature dérivée
     price_average_per_item = order_order_total / max(order_n_items, 1)
 
     # Découpage date/heure
@@ -130,7 +135,6 @@ def build_clean_row(event_json: dict, kafka_timestamp_ms: int | None) -> dict:
     event_day = int(event_time.day)
     event_hour = int(event_time.hour)
 
-    # Ligne "clean" conforme à ingest.py
     return {
         "event_id": event_id,
         "event_time": event_time,
@@ -156,8 +160,12 @@ def build_clean_row(event_json: dict, kafka_timestamp_ms: int | None) -> dict:
 
 def build_model_features(clean_row: dict) -> pd.DataFrame:
     """
-    Construit le DataFrame features pour le modèle ML (1 ligne).
-    On réutilise les colonnes typiques de ton dataset clean.
+    Construit le DataFrame "features brutes" (1 ligne) pour le modèle ML.
+
+    IMPORTANT:
+    - Ce DataFrame est "raw" (avant onehot/scaling).
+    - Le preprocessing réel sera appliqué via apply_preprocess_for_model(...)
+      pour correspondre exactement aux features vues à l'entraînement.
     """
     return pd.DataFrame([{
         "customer_country": clean_row["customer_country"],
@@ -178,6 +186,98 @@ def build_model_features(clean_row: dict) -> pd.DataFrame:
 
 
 # ============================================================
+# 1bis) Preprocessing identique à l'entraînement (Option 2)
+# ============================================================
+
+def apply_preprocess_for_model(X_raw: pd.DataFrame, preprocess: dict) -> pd.DataFrame:
+    """
+    Applique le même preprocessing que dans train_classification.py :
+    - Imputation (num + cat)
+    - IQR clipping (num)
+    - bool -> int
+    - OneHotEncoder (cat)
+    - Scaler (num)
+    - Alignement final EXACT sur feature_names_after_preprocess
+
+    Objectif : garantir que model.predict_proba(...) reçoit les mêmes colonnes
+    dans le même ordre que pendant l'entraînement.
+    """
+    X = X_raw.copy()
+
+    # Récupération des objets/paramètres sauvegardés
+    num_imputer = preprocess.get("num_imputer")
+    cat_imputer = preprocess.get("cat_imputer")
+    iqr_transformer = preprocess.get("iqr_transformer")
+    encoder = preprocess.get("encoder")
+    scaler = preprocess.get("scaler")
+
+    numeric_cols = preprocess.get("numeric_cols", []) or []
+    categorical_cols = preprocess.get("categorical_cols", []) or []
+    bool_cols = preprocess.get("bool_cols", []) or []
+
+    feature_names_after = preprocess.get("feature_names_after_preprocess")
+
+    # --- 1) Imputation ---
+    # Numériques
+    if num_imputer is not None and len(numeric_cols) > 0:
+        cols = [c for c in numeric_cols if c in X.columns]
+        if cols:
+            X[cols] = num_imputer.transform(X[cols])
+
+    # Catégorielles
+    if cat_imputer is not None and len(categorical_cols) > 0:
+        cols = [c for c in categorical_cols if c in X.columns]
+        if cols:
+            X[cols] = cat_imputer.transform(X[cols])
+
+    # --- 2) IQR clipping sur numériques ---
+    if iqr_transformer is not None and len(numeric_cols) > 0:
+        cols = [c for c in numeric_cols if c in X.columns]
+        if cols:
+            X[cols] = iqr_transformer.transform(X[cols])
+
+    # --- 3) bool -> int (si applicable) ---
+    # (en classification, normalement bool_cols est souvent vide ici car on n'a pas order_is_returned en feature,
+    #  mais on laisse pour robustesse)
+    if len(bool_cols) > 0:
+        cols = [c for c in bool_cols if c in X.columns]
+        if cols:
+            X[cols] = X[cols].astype(int)
+
+    # --- 4) OneHotEncoder ---
+    # On encode uniquement si l'encoder existe (cas standard)
+    if encoder is not None and len(categorical_cols) > 0:
+        cols = [c for c in categorical_cols if c in X.columns]
+        if cols:
+            encoded = encoder.transform(X[cols])
+            feature_names = encoder.get_feature_names_out(cols)
+            encoded_df = pd.DataFrame(encoded, index=X.index, columns=feature_names)
+
+            # On retire les colonnes catégorielles brutes et on ajoute les colonnes encodées
+            X = X.drop(columns=cols)
+            X = pd.concat([X, encoded_df], axis=1)
+
+    # --- 5) Scaling (numériques) ---
+    if scaler is not None and len(numeric_cols) > 0:
+        cols = [c for c in numeric_cols if c in X.columns]
+        if cols:
+            X[cols] = scaler.transform(X[cols])
+
+    # --- 6) Alignement final des colonnes EXACT comme à l'entraînement ---
+    # (très important : mêmes colonnes, même ordre)
+    if feature_names_after:
+        # Ajoute les colonnes manquantes (souvent des onehot non présents sur ce message) à 0
+        for col in feature_names_after:
+            if col not in X.columns:
+                X[col] = 0.0
+
+        # Supprime les colonnes en trop (si le flux amène des colonnes inattendues)
+        X = X[feature_names_after]
+
+    return X
+
+
+# ============================================================
 # 2) MAIN - Boucle Kafka
 # ============================================================
 
@@ -188,8 +288,19 @@ def main() -> None:
     # Crée les tables au démarrage
     ensure_tables(engine)
 
-    # Charger le modèle ML (pipeline complet)
-    model = load(CLASSIFICATION_MODEL_PATH)
+    # ------------------------------------------------------------
+    # MODIF MIN #1 : charger le "bundle" joblib au lieu d'un model direct
+    # ------------------------------------------------------------
+    bundle = load(CLASSIFICATION_MODEL_PATH)
+
+    # Compat : si jamais tu as encore un ancien fichier (model direct), on gère les 2 cas.
+    if isinstance(bundle, dict) and "model" in bundle:
+        model = bundle["model"]
+        preprocess = bundle.get("preprocess", {}) or {}
+    else:
+        # Ancien format : bundle est directement un modèle sklearn
+        model = bundle
+        preprocess = {}
 
     # Kafka consumer
     consumer = KafkaConsumer(
@@ -241,8 +352,12 @@ def main() -> None:
 
             # 6) Inférence ML
             try:
-                X = build_model_features(clean_row)
-                proba_return = float(model.predict_proba(X)[0][1])
+                # ------------------------------------------------------------
+                # MODIF MIN #2 : appliquer le preprocessing avant predict_proba
+                # ------------------------------------------------------------
+                X_raw = build_model_features(clean_row)
+                X_model = apply_preprocess_for_model(X_raw, preprocess)
+                proba_return = float(model.predict_proba(X_model)[0][1])
             except Exception as e:
                 print(f"[ERROR] Inference ML KO event_id={event_id} -> {e}")
                 continue

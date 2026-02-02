@@ -95,7 +95,7 @@ SQLALCHEMY_DATABASE_URL = (
 # ---------------------------
 # Dans docker-compose : kafka est accessible depuis les containers sous "kafka:9092".
 # Depuis la machine host, on peut accéder via "localhost:9092" (port exposé).
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:29092")
 # Topic Kafka pour les événements
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "events")
 

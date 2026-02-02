@@ -16,7 +16,6 @@ fastparquet # Pour la gestion des fichiers Parquet
 kafka-python>=2.0.2 # Pour interagir avec Apache Kafka
 
 python-dotenv # Pour charger les variables d'environnement depuis un fichier .env
-stdlib # Pour la gestion des chemins de fichiers
 pathlib # Pour la gestion des chemins de fichiers
 
 scikit-learn # Pour les algorithmes de machine learning

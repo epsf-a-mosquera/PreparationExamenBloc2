@@ -1,93 +1,129 @@
-#ExamenBloc2/docker-compose.yml
-# Docker Compose file to set up MySQL, phpMyAdmin, Zookeeper, Kafka, and Kafka UI services
+# ExamenBloc2/docker-compose.yml
+
 services:
   # -------------------------------
-  # Service MySQL
-  # Base de données relationnelle
+  # MySQL
   # -------------------------------
   mysql:
-    image: mysql:8.0                        # Image Docker officielle de MySQL version 8.0
-    container_name: exam-mysql              # Nom du conteneur pour identification
-    environment:                            # Variables d'environnement pour configurer MySQL
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}   # Mot de passe root (depuis fichier .env)
-      MYSQL_DATABASE: ${MYSQL_DATABASE}             # Base de données à créer au démarrage
-      MYSQL_USER: ${MYSQL_USER}                     # Utilisateur MySQL
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}             # Mot de passe de l'utilisateur MySQL
+    image: mysql:8.0
+    container_name: exam-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "${MYSQL_PORT}:3306"                  # Mappe le port MySQL interne (3306) vers l'extérieur (défini dans .env)
+      - "${MYSQL_PORT}:3306"
     volumes:
-      - mysql_data:/var/lib/mysql             # Persistance des données sur un volume Docker
-    healthcheck:                              # Vérifie que le service MySQL est opérationnel
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]  # Commande ping MySQL
-      interval: 5s                            # Intervalle entre les tests
-      timeout: 5s                             # Durée maximale d'attente pour une réponse
-      retries: 20                             # Nombre de tentatives avant de considérer le service non sain
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
 
   # -------------------------------
-  # Service phpMyAdmin
-  # Interface web pour gérer MySQL
+  # phpMyAdmin
   # -------------------------------
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin             # Image officielle phpMyAdmin
-    container_name: exam-phpmyadmin          # Nom du conteneur
+    image: phpmyadmin/phpmyadmin
+    container_name: exam-phpmyadmin
     environment:
-      PMA_HOST: mysql                        # Hôte de la base de données à gérer (le service mysql défini ci-dessus)
-      PMA_PORT: 3306                          # Port MySQL
-      PMA_USER: root                          # Utilisateur par défaut pour connexion
-      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}    # Mot de passe root pour la connexion
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "${PHPMYADMIN_PORT}:80"               # Mappe le port web 80 du conteneur vers un port de l'hôte
-    depends_on:                               # Dépendances : phpMyAdmin démarre après MySQL sain
+      - "${PHPMYADMIN_PORT}:80"
+    depends_on:
       mysql:
         condition: service_healthy
+    restart: unless-stopped
 
   # -------------------------------
-  # Service Zookeeper
-  # Gestionnaire de configuration et coordination pour Kafka
+  # Zookeeper (Confluent)
   # -------------------------------
   zookeeper:
-    image: wurstmeister/zookeeper              # Image Zookeeper wurstmeister
-    container_name: exam-zookeeper            # Nom du conteneur
+    image: confluentinc/cp-zookeeper:7.7.7
+    container_name: exam-zookeeper
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes            # Permet une connexion sans authentification
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"                           # Mappe le port interne 2181 vers l'extérieur
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    healthcheck:
+      # "cub" est l'outil Confluent pour vérifier la readiness (zk-ready / kafka-ready). :contentReference[oaicite:4]{index=4}
+      test: ["CMD-SHELL", "cub zk-ready localhost:2181 20"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
 
   # -------------------------------
-  # Service Kafka
-  # Système de messagerie distribuée
+  # Kafka (Confluent)
   # -------------------------------
   kafka:
-    image: wurstmeister/kafka                 # Image Kafka wurstmeister
-    container_name: exam-kafka               # Nom du conteneur
-    environment:
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181   # Adresse de Zookeeper pour coordination
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092       # Adresse et port sur lequel Kafka écoute
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092  # Adresse que les clients utiliseront pour se connecter
-      - ALLOW_PLAINTEXT_LISTENER=yes                  # Autorise une connexion non sécurisée
+    image: confluentinc/cp-kafka:7.7.7
+    container_name: exam-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
     ports:
-      - "9092:9092"                            # Mappe le port Kafka interne 9092 vers l'extérieur
-    depends_on:                                # Kafka dépend de Zookeeper
-      - zookeeper
+      # Interne Docker : 9092 (Kafka UI l'utilise)
+      - "9092:9092"
+      # Externe host : 29092 (ton Python sur la VM doit utiliser celui-là)
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+
+      # 2 listeners:
+      # - INTERNAL => pour les conteneurs (kafka:9092)
+      # - EXTERNAL => pour la VM host (localhost:29092)
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:9092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-localhost}:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+
+      # Single broker => replication factor = 1 obligatoire pour éviter des erreurs au démarrage
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Dev-friendly
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 20"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
 
   # -------------------------------
-  # Service Kafka UI
-  # Interface Web pour administrer Kafka
+  # Kafka UI
   # -------------------------------
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest     # Image officielle Kafka UI
-    container_name: exam-kafka-ui            # Nom du conteneur
+    image: provectuslabs/kafka-ui:latest
+    container_name: exam-kafka-ui
     ports:
-      - "${KAFKA_UI_PORT}:8080"                          # Port externe 8081 → port interne 8080
+      - "${KAFKA_UI_PORT}:8080"
     environment:
-      KAFKA_CLUSTERS_0_NAME: ${KAFKA_UI_CLUSTER_NAME}     # Nom du cluster Kafka affiché dans l'interface
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092   # Adresse du broker Kafka (nom du service Docker + port)
-      AUTH_TYPE: "disabled"     # Désactiver l’authentification
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_UI_CLUSTER_NAME}
+      # IMPORTANT : Kafka UI est dans Docker => doit utiliser kafka:9092, jamais localhost
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
+      AUTH_TYPE: "disabled"
     depends_on:
-      - kafka                                # Kafka UI démarre après Kafka
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
 
-# -------------------------------
-# Volumes Docker pour persistance des données
-# -------------------------------
 volumes:
-  mysql_data:                                   # Volume pour stocker les données MySQL
+  mysql_data:
+  zookeeper_data:
+  zookeeper_log:

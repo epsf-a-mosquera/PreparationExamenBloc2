@@ -1,41 +1,41 @@
 {
   "run": {
-    "run_id": "247b840b-16a6-4872-8e38-e187b484fff8",
-    "created_at_utc": "2026-02-01T17:09:45.672422+00:00",
+    "run_id": "7d6dce83-84ce-4ab7-b446-9e478f872efb",
+    "created_at_utc": "2026-02-02T02:53:42.158064+00:00",
     "python_version": "3.10.12",
-    "platform": "Linux-6.8.0-1044-aws-x86_64-with-glibc2.35",
+    "platform": "Linux-6.8.0-1021-aws-x86_64-with-glibc2.35",
     "sklearn_version": "1.7.2",
     "pandas_version": "2.3.3",
     "numpy_version": "2.2.6"
   },
   "data": {
-    "features_train_csv_path": "/home/ubuntu/ExamenBloc2/data/features/classification_orders_events_features_train.csv",
-    "features_test_csv_path": "/home/ubuntu/ExamenBloc2/data/features/classification_orders_events_features_test.csv",
-    "n_rows_total_train": 3200,
-    "n_rows_total_test": 800,
-    "n_rows_total": 4000,
+    "features_train_csv_path": "/home/ubuntu/PreparationExamenBloc2/data/features/classification_orders_events_features_train.csv",
+    "features_test_csv_path": "/home/ubuntu/PreparationExamenBloc2/data/features/classification_orders_events_features_test.csv",
+    "n_rows_total_train": 9600,
+    "n_rows_total_test": 2400,
+    "n_rows_total": 12000,
     "n_features": 24,
     "feature_names": [
-      "order_n_items",
-      "order_basket_value",
-      "order_shipping_fee",
-      "order_discount",
-      "order_order_total",
-      "event_year",
-      "event_month",
       "event_day",
       "event_hour",
+      "event_month",
+      "event_year",
+      "order_basket_value",
+      "order_discount",
+      "order_n_items",
+      "order_order_total",
+      "order_shipping_fee",
       "price_average_per_item",
       "customer_country_DE",
       "customer_country_ES",
       "customer_country_FR",
       "customer_country_IT",
-      "order_device_mobile",
-      "order_device_tablet",
       "order_channel_affiliate",
       "order_channel_direct",
       "order_channel_email",
       "order_channel_seo",
+      "order_device_mobile",
+      "order_device_tablet",
       "order_main_category_electronics",
       "order_main_category_fashion",
       "order_main_category_home",
@@ -44,24 +44,24 @@
     "target_name": "order_is_returned",
     "target_positive_label": 1,
     "class_balance_total": {
-      "positive_rate": 0.22625,
-      "n_positive": 905,
-      "n_negative": 3095
+      "positive_rate": 0.21541666666666667,
+      "n_positive": 2585,
+      "n_negative": 9415
     },
     "split": {
       "test_size": 0.2,
       "random_state": 42,
-      "train_rows": 3200,
-      "test_rows": 800,
+      "train_rows": 9600,
+      "test_rows": 2400,
       "class_balance_test": {
-        "positive_rate": 0.22625,
-        "n_positive": 181,
-        "n_negative": 619
+        "positive_rate": 0.21541666666666667,
+        "n_positive": 517,
+        "n_negative": 1883
       }
     }
   },
   "model": {
-    "artifact_model_path": "/home/ubuntu/ExamenBloc2/artifacts/classification_model.joblib",
+    "artifact_model_path": "/home/ubuntu/PreparationExamenBloc2/artifacts/classification_model.joblib",
     "type": "sklearn.linear_model.LogisticRegression",
     "params": {
       "C": 1.0,
@@ -82,16 +82,16 @@
     }
   },
   "metrics": {
-    "accuracy": 0.77375,
+    "accuracy": 0.7845833333333333,
     "precision": 0.0,
     "recall": 0.0,
     "f1": 0.0,
     "balanced_accuracy": 0.5,
     "matthews_corrcoef": 0.0,
-    "roc_auc": 0.6111711100598899,
-    "pr_auc": 0.33994080997623094,
-    "log_loss": 0.519731990873364,
-    "brier_score": 0.1693511238234451,
+    "roc_auc": 0.5965921289024982,
+    "pr_auc": 0.28560540186115224,
+    "log_loss": 0.509062675211259,
+    "brier_score": 0.1646909876861778,
     "threshold": 0.5
   },
   "confusion_matrix": {
@@ -101,129 +101,129 @@
     ],
     "matrix": [
       [
-        619,
+        1883,
         0
       ],
       [
-        181,
+        517,
         0
       ]
     ],
-    "tn": 619,
+    "tn": 1883,
     "fp": 0,
-    "fn": 181,
+    "fn": 517,
     "tp": 0
   },
   "classification_report": {
     "0": {
-      "precision": 0.77375,
+      "precision": 0.7845833333333333,
       "recall": 1.0,
-      "f1-score": 0.8724453840732911,
-      "support": 619.0
+      "f1-score": 0.8792902171375204,
+      "support": 1883.0
     },
     "1": {
       "precision": 0.0,
       "recall": 0.0,
       "f1-score": 0.0,
-      "support": 181.0
+      "support": 517.0
     },
-    "accuracy": 0.77375,
+    "accuracy": 0.7845833333333333,
     "macro avg": {
-      "precision": 0.386875,
+      "precision": 0.39229166666666665,
       "recall": 0.5,
-      "f1-score": 0.43622269203664554,
-      "support": 800.0
+      "f1-score": 0.4396451085687602,
+      "support": 2400.0
     },
     "weighted avg": {
-      "precision": 0.5986890625,
-      "recall": 0.77375,
-      "f1-score": 0.675054615926709,
-      "support": 800.0
+      "precision": 0.6155710069444444,
+      "recall": 0.7845833333333333,
+      "f1-score": 0.6898764495291462,
+      "support": 2400.0
     }
   },
   "interpretability": {
     "top_positive_coefs": [
       {
         "feature": "order_main_category_fashion",
-        "coef": 0.545567887017211
+        "coef": 0.7475010290983114
       },
       {
-        "feature": "order_device_mobile",
-        "coef": 0.2407651286207268
+        "feature": "order_order_total",
+        "coef": 0.3989903592009055
       },
       {
-        "feature": "order_basket_value",
-        "coef": 0.1633308573935599
-      },
-      {
-        "feature": "event_day",
-        "coef": 0.15518631527161378
-      },
-      {
-        "feature": "order_n_items",
-        "coef": 0.12593694655027515
-      },
-      {
-        "feature": "order_main_category_sports",
-        "coef": 0.100670044057124
-      },
-      {
-        "feature": "order_channel_seo",
-        "coef": 0.06869579054787484
-      },
-      {
-        "feature": "order_channel_affiliate",
-        "coef": 0.05447260410323138
+        "feature": "customer_country_ES",
+        "coef": 0.10748988577087565
       },
       {
         "feature": "customer_country_FR",
-        "coef": 0.04765457368989567
+        "coef": 0.08531042344464465
+      },
+      {
+        "feature": "order_device_mobile",
+        "coef": 0.08218268466443462
       },
       {
         "feature": "customer_country_DE",
-        "coef": 0.010910616663096485
+        "coef": 0.06724501220530943
+      },
+      {
+        "feature": "order_n_items",
+        "coef": 0.06148983195521958
+      },
+      {
+        "feature": "event_hour",
+        "coef": 0.057896274516266215
+      },
+      {
+        "feature": "price_average_per_item",
+        "coef": 0.04748711440604233
+      },
+      {
+        "feature": "order_discount",
+        "coef": 0.027050388958942965
       }
     ],
     "top_negative_coefs": [
       {
-        "feature": "order_discount",
-        "coef": -0.02622647200377006
-      },
-      {
-        "feature": "price_average_per_item",
-        "coef": -0.03586393228532747
-      },
-      {
-        "feature": "customer_country_IT",
-        "coef": -0.04730372827725264
-      },
-      {
         "feature": "order_device_tablet",
-        "coef": -0.055975832873639705
+        "coef": -0.008675250753251424
       },
       {
-        "feature": "event_hour",
-        "coef": -0.06910099236773595
+        "feature": "event_day",
+        "coef": -0.018415991413129582
       },
       {
-        "feature": "order_order_total",
-        "coef": -0.07946093305297998
+        "feature": "order_channel_seo",
+        "coef": -0.022940979670295358
+      },
+      {
+        "feature": "order_channel_affiliate",
+        "coef": -0.04431698946753255
       },
       {
         "feature": "order_main_category_electronics",
-        "coef": -0.13800417884578242
-      },
-      {
-        "feature": "order_channel_direct",
-        "coef": -0.21793665456895703
-      },
-      {
-        "feature": "order_channel_email",
-        "coef": -0.3150083015795414
+        "coef": -0.08408371664267872
       },
       {
         "feature": "order_main_category_home",
-        "coef": -0.34333513744619104
+        "coef": -0.09128305204393314
+      },
+      {
+        "feature": "order_channel_direct",
+        "coef": -0.10231349550343889
+      },
+      {
+        "feature": "order_main_category_sports",
+        "coef": -0.13264172056523696
+      },
+      {
+        "feature": "order_channel_email",
+        "coef": -0.19925713958665586
+      },
+      {
+        "feature": "order_basket_value",
+        "coef": -0.43298416825436625
       }
     ]
   }
