@@ -1,4 +1,4 @@
-#ExamenBloc2/src/generate_data.py
+#PreparationExamenBloc2/src/generate_data.py
 """
 generate_data.py
 ----------------
@@ -19,6 +19,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from src.config import RAW_JSONL_PATH, RAW_DIR
+from src.eco_impact import track_phase  # NEW : mesure carbone de la génération
 
 
 def random_date(start_days_ago: int = 30) -> str:
@@ -125,28 +126,31 @@ def main(n_events: int = 4000, with_duplicates: int = 50) -> None:
     Génère n_events événements dans un fichier JSONL.
     Ajoute volontairement quelques doublons d'event_id.
     """
-    # On s'assure que le dossier existe
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    # NEW : On mesure TOUTE la phase de génération de données
+    # => impact CPU + écritures disque associées
+    with track_phase("generate_data"):
+        # On s'assure que le dossier existe
+        RAW_DIR.mkdir(parents=True, exist_ok=True)
 
-    # On garde une liste d'événements pour pouvoir dupliquer certains event_id
-    events = []
+        # On garde une liste d'événements pour pouvoir dupliquer certains event_id
+        events = []
 
-    for _ in range(n_events):
-        events.append(generate_one_event())
+        for _ in range(n_events):
+            events.append(generate_one_event())
 
-    # Ajout de doublons : on réécrit certains events (même event_id)
-    for _ in range(with_duplicates):
-        events.append(random.choice(events))
+        # Ajout de doublons : on réécrit certains events (même event_id)
+        for _ in range(with_duplicates):
+            events.append(random.choice(events))
 
-    # On mélange l'ordre pour simuler du "flux"
-    random.shuffle(events)
+        # On mélange l'ordre pour simuler du "flux"
+        random.shuffle(events)
 
-    # On écrit en JSON Lines
-    with open(RAW_JSONL_PATH, "w", encoding="utf-8") as f:
-        for ev in events:
-            f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+        # On écrit en JSON Lines
+        with open(RAW_JSONL_PATH, "w", encoding="utf-8") as f:
+            for ev in events:
+                f.write(json.dumps(ev, ensure_ascii=False) + "\n")
 
-    print(f"[OK] Dataset généré : {RAW_JSONL_PATH} ({len(events)} lignes)")
+        print(f"[OK] Dataset généré : {RAW_JSONL_PATH} ({len(events)} lignes)")
 
 
 if __name__ == "__main__":

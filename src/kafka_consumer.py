@@ -1,4 +1,4 @@
-# ExamenBloc2/src/kafka_consumer.py
+# PreparationExamenBloc2/src/kafka_consumer.py
 """
 kafka_consumer.py
 -----------------
@@ -39,6 +39,7 @@ from src.config import (
 from src.db_models import Base, Event
 from src.ingest import ingest_clean_dataframe
 from src.ingest_predictions import ingest_predictions_dataframe
+from src.eco_impact import track_phase  # NEW : mesure consumer Kafka
 
 
 # -------------------------------------------------------------------
@@ -282,105 +283,110 @@ def apply_preprocess_for_model(X_raw: pd.DataFrame, preprocess: dict) -> pd.Data
 # ============================================================
 
 def main() -> None:
-    # Engine DB créé une fois, puis réutilisé
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    # NEW : mesure la phase consumer (consommation + ingestion + inférence)
+    # IMPORTANT : le tracker s'arrêtera quand le process reçoit SIGINT
+    # (ex: kafka_pipeline le stoppe proprement) => stop() est appelé.
+    with track_phase("kafka_consumer_ingest_infer"):
+            
+        # Engine DB créé une fois, puis réutilisé
+        engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-    # Crée les tables au démarrage
-    ensure_tables(engine)
+        # Crée les tables au démarrage
+        ensure_tables(engine)
 
-    # ------------------------------------------------------------
-    # MODIF MIN #1 : charger le "bundle" joblib au lieu d'un model direct
-    # ------------------------------------------------------------
-    bundle = load(CLASSIFICATION_MODEL_PATH)
+        # ------------------------------------------------------------
+        # MODIF MIN #1 : charger le "bundle" joblib au lieu d'un model direct
+        # ------------------------------------------------------------
+        bundle = load(CLASSIFICATION_MODEL_PATH)
 
-    # Compat : si jamais tu as encore un ancien fichier (model direct), on gère les 2 cas.
-    if isinstance(bundle, dict) and "model" in bundle:
-        model = bundle["model"]
-        preprocess = bundle.get("preprocess", {}) or {}
-    else:
-        # Ancien format : bundle est directement un modèle sklearn
-        model = bundle
-        preprocess = {}
+        # Compat : si jamais tu as encore un ancien fichier (model direct), on gère les 2 cas.
+        if isinstance(bundle, dict) and "model" in bundle:
+            model = bundle["model"]
+            preprocess = bundle.get("preprocess", {}) or {}
+        else:
+            # Ancien format : bundle est directement un modèle sklearn
+            model = bundle
+            preprocess = {}
 
-    # Kafka consumer
-    consumer = KafkaConsumer(
-        KAFKA_TOPIC,
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        auto_offset_reset="earliest",
-        enable_auto_commit=True,
-        value_deserializer=lambda b: b.decode("utf-8"),
-        group_id="examenbloc2-consumer",
-    )
+        # Kafka consumer
+        consumer = KafkaConsumer(
+            KAFKA_TOPIC,
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            auto_offset_reset="earliest",
+            enable_auto_commit=True,
+            value_deserializer=lambda b: b.decode("utf-8"),
+            group_id="examenbloc2-consumer",
+        )
 
-    print("[OK] Consumer démarré. En attente de messages...")
+        print("[OK] Consumer démarré. En attente de messages...")
 
-    try:
-        for msg in consumer:
-            raw = msg.value
+        try:
+            for msg in consumer:
+                raw = msg.value
 
-            # 1) Parse JSON
-            try:
-                event_json = json.loads(raw)
-            except json.JSONDecodeError:
-                print("[WARN] Message non-JSON -> ignoré")
-                continue
+                # 1) Parse JSON
+                try:
+                    event_json = json.loads(raw)
+                except json.JSONDecodeError:
+                    print("[WARN] Message non-JSON -> ignoré")
+                    continue
 
-            # 2) Validation minimale des clés obligatoires
-            required = {"event_id", "order_id", "customer_customer_id"}
-            missing = required - set(event_json.keys())
-            if missing:
-                print(f"[WARN] Champs manquants {sorted(list(missing))} -> ignoré")
-                continue
+                # 2) Validation minimale des clés obligatoires
+                required = {"event_id", "order_id", "customer_customer_id"}
+                missing = required - set(event_json.keys())
+                if missing:
+                    print(f"[WARN] Champs manquants {sorted(list(missing))} -> ignoré")
+                    continue
 
-            event_id = str(event_json["event_id"])
+                event_id = str(event_json["event_id"])
 
-            # 3) Déduplication : si déjà en base, on skip
-            if event_already_ingested(engine, event_id):
-                print(f"[INFO] Doublon event_id={event_id} -> skip")
-                continue
+                # 3) Déduplication : si déjà en base, on skip
+                if event_already_ingested(engine, event_id):
+                    print(f"[INFO] Doublon event_id={event_id} -> skip")
+                    continue
 
-            # 4) Normaliser vers une ligne clean
-            clean_row = build_clean_row(event_json, kafka_timestamp_ms=msg.timestamp)
-            df_clean = pd.DataFrame([clean_row])
+                # 4) Normaliser vers une ligne clean
+                clean_row = build_clean_row(event_json, kafka_timestamp_ms=msg.timestamp)
+                df_clean = pd.DataFrame([clean_row])
 
-            # 5) Ingestion Customer / Order / Event via ingest.py
-            try:
-                ingest_clean_dataframe(df_clean, engine=engine)
-            except Exception as e:
-                print(f"[ERROR] Ingestion (Customer/Order/Event) KO event_id={event_id} -> {e}")
-                continue
+                # 5) Ingestion Customer / Order / Event via ingest.py
+                try:
+                    ingest_clean_dataframe(df_clean, engine=engine)
+                except Exception as e:
+                    print(f"[ERROR] Ingestion (Customer/Order/Event) KO event_id={event_id} -> {e}")
+                    continue
 
-            # 6) Inférence ML
-            try:
-                # ------------------------------------------------------------
-                # MODIF MIN #2 : appliquer le preprocessing avant predict_proba
-                # ------------------------------------------------------------
-                X_raw = build_model_features(clean_row)
-                X_model = apply_preprocess_for_model(X_raw, preprocess)
-                proba_return = float(model.predict_proba(X_model)[0][1])
-            except Exception as e:
-                print(f"[ERROR] Inference ML KO event_id={event_id} -> {e}")
-                continue
+                # 6) Inférence ML
+                try:
+                    # ------------------------------------------------------------
+                    # MODIF MIN #2 : appliquer le preprocessing avant predict_proba
+                    # ------------------------------------------------------------
+                    X_raw = build_model_features(clean_row)
+                    X_model = apply_preprocess_for_model(X_raw, preprocess)
+                    proba_return = float(model.predict_proba(X_model)[0][1])
+                except Exception as e:
+                    print(f"[ERROR] Inference ML KO event_id={event_id} -> {e}")
+                    continue
 
-            # 7) Ingestion Prediction via ingest_predictions.py
-            df_pred = pd.DataFrame([{
-                "event_id": clean_row["event_id"],
-                "order_id": clean_row["order_id"],
-                "customer_customer_id": clean_row["customer_customer_id"],
-                "return_proba": proba_return,
-            }])
+                # 7) Ingestion Prediction via ingest_predictions.py
+                df_pred = pd.DataFrame([{
+                    "event_id": clean_row["event_id"],
+                    "order_id": clean_row["order_id"],
+                    "customer_customer_id": clean_row["customer_customer_id"],
+                    "return_proba": proba_return,
+                }])
 
-            try:
-                ingest_predictions_dataframe(df_pred, engine=engine, validate_fk=True)
-            except Exception as e:
-                print(f"[ERROR] Ingestion Prediction KO event_id={event_id} -> {e}")
-                continue
+                try:
+                    ingest_predictions_dataframe(df_pred, engine=engine, validate_fk=True)
+                except Exception as e:
+                    print(f"[ERROR] Ingestion Prediction KO event_id={event_id} -> {e}")
+                    continue
 
-            print(f"[OK] event_id={event_id} ingéré | proba_return={proba_return:.3f}")
+                print(f"[OK] event_id={event_id} ingéré | proba_return={proba_return:.3f}")
 
-    finally:
-        consumer.close()
-        print("[OK] Consumer arrêté proprement.")
+        finally:
+            consumer.close()
+            print("[OK] Consumer arrêté proprement.")
 
 
 if __name__ == "__main__":

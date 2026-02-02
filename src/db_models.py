@@ -1,4 +1,4 @@
-#ExamenBloc2/src/db_models.py
+#PreparationExamenBloc2/src/db_models.py
 '''
 celui-ci est le script qui va définir les modèles de données pour interagir avec la base de données MySQL en utilisant SQLAlchemy ORM.
 Il inclut la définition des tables, des colonnes, des types de données, et des relations entre les tables si nécessaire.

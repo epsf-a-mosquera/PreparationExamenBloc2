@@ -1,4 +1,4 @@
-# ExamenBloc2/src/ingest.py
+# PreparationExamenBloc2/src/ingest.py
 """
 Script d'ingestion (load) des données nettoyées dans une base SQL via SQLAlchemy ORM.
 
@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.config import SQLALCHEMY_DATABASE_URL, CLEAN_CSV_PATH
 from src.db_models import Base, Event, Order, Customer
+from src.eco_impact import track_phase  # NEW : mesure ingestion SQL (mode CLI)
 
 
 def none_if_nan(value):
@@ -121,14 +122,17 @@ def ingest_clean_dataframe(df: pd.DataFrame, engine=None) -> dict:
 
 def main():
     """Mode CLI : ingestion depuis le CSV clean."""
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
-    Base.metadata.create_all(engine)
+    # NEW : mesure l'ingestion batch CSV -> MySQL
+    with track_phase("sql_ingestion_batch"):
+        """Mode CLI : ingestion depuis le CSV clean."""
+        engine = create_engine(SQLALCHEMY_DATABASE_URL)
+        Base.metadata.create_all(engine)
 
-    df = pd.read_csv(CLEAN_CSV_PATH)
-    print(f"✅ CSV clean chargé : {df.shape[0]} lignes, {df.shape[1]} colonnes.")
+        df = pd.read_csv(CLEAN_CSV_PATH)
+        print(f"✅ CSV clean chargé : {df.shape[0]} lignes, {df.shape[1]} colonnes.")
 
-    stats = ingest_clean_dataframe(df, engine=engine)
-    print("✅ Ingestion terminée :", stats)
+        stats = ingest_clean_dataframe(df, engine=engine)
+        print("✅ Ingestion terminée :", stats)
 
 
 if __name__ == "__main__":

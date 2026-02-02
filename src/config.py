@@ -1,4 +1,4 @@
-#ExamenBloc2/src/config.py
+#PreparationExamenBloc2/src/config.py
 """
 config.py
 ---------

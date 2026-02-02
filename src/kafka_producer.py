@@ -1,4 +1,4 @@
-#ExamenBloc2/src/kafka_producer.py
+#PreparationExamenBloc2/src/kafka_producer.py
 """
 kafka_producer.py
 -----------------
@@ -35,6 +35,9 @@ from typing import Optional
 from kafka import KafkaProducer
 
 from src.config import CLEAN_JSONL_PATH, KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC
+
+from src.eco_impact import track_phase  # NEW : mesure producer Kafka
+
 
 
 def build_producer() -> KafkaProducer:
@@ -87,84 +90,86 @@ def main(
     flush_every: int = 200,
     wait_ack: bool = False,
 ) -> None:
-    """
-    Lit le JSONL clean et l'envoie sur Kafka.
+    # NEW : mesure le temps d'émission des messages (CPU + I/O)
+    with track_phase("kafka_producer_send"):
+        """
+        Lit le JSONL clean et l'envoie sur Kafka.
 
-    Args:
-        delay_s: délai entre 2 messages (simule un flux temps réel)
-        max_messages: si défini, limite le nombre total de messages envoyés (pratique en exam)
-        flush_every: flush périodique pour s'assurer que les messages partent
-        wait_ack: si True, on attend l'accusé de réception Kafka pour chaque message (plus sûr, plus lent)
-    """
-    # 1) Vérification fichier d'entrée
-    if not CLEAN_JSONL_PATH.exists():
-        raise FileNotFoundError(
-            f"Fichier introuvable: {CLEAN_JSONL_PATH}. "
-            f"As-tu généré les données (extract_transform.py) ?"
-        )
+        Args:
+            delay_s: délai entre 2 messages (simule un flux temps réel)
+            max_messages: si défini, limite le nombre total de messages envoyés (pratique en exam)
+            flush_every: flush périodique pour s'assurer que les messages partent
+            wait_ack: si True, on attend l'accusé de réception Kafka pour chaque message (plus sûr, plus lent)
+        """
+        # 1) Vérification fichier d'entrée
+        if not CLEAN_JSONL_PATH.exists():
+            raise FileNotFoundError(
+                f"Fichier introuvable: {CLEAN_JSONL_PATH}. "
+                f"As-tu généré les données (extract_transform.py) ?"
+            )
 
-    # 2) Création du producer
-    producer = build_producer()
+        # 2) Création du producer
+        producer = build_producer()
 
-    sent = 0
-    skipped_empty = 0
-    skipped_invalid_json = 0
+        sent = 0
+        skipped_empty = 0
+        skipped_invalid_json = 0
 
-    print(f"[START] Producer Kafka -> topic='{KAFKA_TOPIC}' broker='{KAFKA_BOOTSTRAP_SERVERS}'")
-    print(f"[INFO] Source JSONL: {CLEAN_JSONL_PATH}")
+        print(f"[START] Producer Kafka -> topic='{KAFKA_TOPIC}' broker='{KAFKA_BOOTSTRAP_SERVERS}'")
+        print(f"[INFO] Source JSONL: {CLEAN_JSONL_PATH}")
 
-    # 3) Lecture du fichier ligne par ligne
-    with open(CLEAN_JSONL_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            # a) Nettoyage de la ligne
-            line = line.strip()
+        # 3) Lecture du fichier ligne par ligne
+        with open(CLEAN_JSONL_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                # a) Nettoyage de la ligne
+                line = line.strip()
 
-            # b) Ignorer lignes vides
-            if not line:
-                skipped_empty += 1
-                continue
+                # b) Ignorer lignes vides
+                if not line:
+                    skipped_empty += 1
+                    continue
 
-            # c) Vérifier JSON valide (robustesse)
-            #    (Sans ça, le consumer pourrait planter si tu n'as pas géré ce cas)
-            try:
-                json.loads(line)
-            except json.JSONDecodeError:
-                skipped_invalid_json += 1
-                continue
+                # c) Vérifier JSON valide (robustesse)
+                #    (Sans ça, le consumer pourrait planter si tu n'as pas géré ce cas)
+                try:
+                    json.loads(line)
+                except json.JSONDecodeError:
+                    skipped_invalid_json += 1
+                    continue
 
-            # d) Extraire une key Kafka (event_id)
-            key = extract_key_from_json_line(line)
+                # d) Extraire une key Kafka (event_id)
+                key = extract_key_from_json_line(line)
 
-            # e) Envoyer message
-            future = producer.send(KAFKA_TOPIC, key=key, value=line)
+                # e) Envoyer message
+                future = producer.send(KAFKA_TOPIC, key=key, value=line)
 
-            # f) Option : attendre l'ack broker (garantie que c'est écrit)
-            if wait_ack:
-                # future.get() bloque jusqu'à confirmation ou erreur
-                future.get(timeout=10)
+                # f) Option : attendre l'ack broker (garantie que c'est écrit)
+                if wait_ack:
+                    # future.get() bloque jusqu'à confirmation ou erreur
+                    future.get(timeout=10)
 
-            sent += 1
+                sent += 1
 
-            # g) Flush périodique
-            if sent % flush_every == 0:
-                producer.flush()
-                print(f"[INFO] envoyés: {sent} (empty_skipped={skipped_empty}, invalid_json_skipped={skipped_invalid_json})")
+                # g) Flush périodique
+                if sent % flush_every == 0:
+                    producer.flush()
+                    print(f"[INFO] envoyés: {sent} (empty_skipped={skipped_empty}, invalid_json_skipped={skipped_invalid_json})")
 
-            # h) Stop si on a atteint max_messages
-            if max_messages is not None and sent >= max_messages:
-                break
+                # h) Stop si on a atteint max_messages
+                if max_messages is not None and sent >= max_messages:
+                    break
 
-            # i) Délai pour simuler un flux
-            time.sleep(delay_s)
+                # i) Délai pour simuler un flux
+                time.sleep(delay_s)
 
-    # 4) Flush final + fermeture
-    producer.flush()
-    producer.close()
+        # 4) Flush final + fermeture
+        producer.flush()
+        producer.close()
 
-    print("[DONE] Producer terminé.")
-    print(f"       Total envoyés            : {sent}")
-    print(f"       Lignes vides ignorées    : {skipped_empty}")
-    print(f"       JSON invalides ignorés   : {skipped_invalid_json}")
+        print("[DONE] Producer terminé.")
+        print(f"       Total envoyés            : {sent}")
+        print(f"       Lignes vides ignorées    : {skipped_empty}")
+        print(f"       JSON invalides ignorés   : {skipped_invalid_json}")
 
 
 if __name__ == "__main__":
