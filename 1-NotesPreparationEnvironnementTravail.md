@@ -142,6 +142,8 @@ Pour lancer les services docker les commandes sont les suivantes
 # -------------------------------------------------------------
 # 1️⃣ Créer les images (si nécessaire) et démarrer les services en arrière-plan
 # -------------------------------------------------------------
+# 
+sudo docker-compose up -d
 docker compose up -d
 # - "up" : construit les images si elles n'existent pas et démarre les conteneurs
 # - "-d" : mode détaché (les conteneurs tournent en arrière-plan)
